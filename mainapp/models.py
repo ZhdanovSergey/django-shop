@@ -1,9 +1,20 @@
+from PIL import Image
+
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 
 User = get_user_model()
+
+
+class MinResolutionErrorException(Exception):
+    pass
+
+
+class MaxResolutionErrorException(Exception):
+    pass
+
 
 class LatestProductsManager:
 
@@ -37,6 +48,10 @@ class Category(models.Model):
 
 class Product(models.Model):
 
+    MIN_RESOLUTION = (400, 400)
+    MAX_RESOLUTION = (800, 800)
+    MAX_IMAGE_SIZE = 3145728
+
     class Meta:
         abstract = True
 
@@ -49,6 +64,17 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        image = self.image
+        img = Image.open(image)
+        min_width, min_height = self.MIN_RESOLUTION
+        max_width, max_height = self.MAX_RESOLUTION
+        if img.width < min_width or img.height < min_height:
+            raise MinResolutionErrorException("Разрешение загруженного изображения меньше минимального!")
+        if img.width > max_width or img.height > max_height:
+            raise MaxResolutionErrorException("Разрешение загруженного изображения больше максимального!")
+        return image
 
 
 class CartProduct(models.Model):
